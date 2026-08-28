@@ -1,11 +1,19 @@
 require('dotenv').config();
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
+const { kkiapay } = require('@kkiapay-org/nodejs-sdk');
 
 const app = express();
 app.use(express.json());
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+const k = kkiapay({
+  privatekey: process.env.KKIAPAY_PRIVATE_KEY,
+  publickey: process.env.KKIAPAY_PUBLIC_KEY,
+  secretkey: process.env.KKIAPAY_SECRET_KEY,
+  sandbox: process.env.KKIAPAY_SANDBOX === 'true'
+});
 
 app.get('/', (req, res) => {
   res.send('XSMARTPUMP backend en ligne !');
@@ -51,6 +59,7 @@ app.get('/api/reservoir', async (req, res) => {
   }
 });
 
+// --- Route spécifique AVANT la route générique ---
 app.get('/pay/merci', (req, res) => {
   res.send('<h2>Paiement en cours de traitement, vous pouvez fermer cette page.</h2>');
 });
@@ -102,18 +111,7 @@ app.get('/pay/:id', async (req, res) => {
   res.send(html);
 });
 
-
-const { kkiapay } = require('@kkiapay-org/nodejs-sdk');
-
-const k = kkiapay({
-  privatekey: process.env.KKIAPAY_PRIVATE_KEY,
-  publickey: process.env.KKIAPAY_PUBLIC_KEY,
-  secretkey: process.env.KKIAPAY_SECRET_KEY,
-  sandbox: process.env.KKIAPAY_SANDBOX === 'true'
-});
-
 app.post('/api/kkiapay/webhook', async (req, res) => {
-  // Vérification de sécurité : la requête vient-elle bien de KKiaPay ?
   const signature = req.headers['x-kkiapay-secret'];
   if (signature !== process.env.KKIAPAY_WEBHOOK_SECRET) {
     console.log('Webhook refusé: signature invalide');
@@ -124,11 +122,10 @@ app.post('/api/kkiapay/webhook', async (req, res) => {
   console.log('Webhook reçu:', event, 'succès:', isPaymentSucces);
 
   if (!isPaymentSucces) {
-    return res.status(200).send('OK'); // paiement échoué, rien à faire côté commande
+    return res.status(200).send('OK');
   }
 
   try {
-    // On récupère les détails complets de la transaction, y compris notre "data" (l'id de commande)
     const transaction = await k.verify(transactionId);
     const commandeId = transaction.data;
 
