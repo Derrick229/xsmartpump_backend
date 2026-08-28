@@ -51,6 +51,56 @@ app.get('/api/reservoir', async (req, res) => {
   }
 });
 
+app.get('/pay/:id', async (req, res) => {
+  const { id } = req.params;
+
+  const { data: commande, error } = await supabase
+    .from('Commande')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !commande) {
+    return res.status(404).send('Commande introuvable');
+  }
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Paiement XSMARTPUMP</title>
+      <script src="https://cdn.kkiapay.me/k.js"></script>
+      <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 40px 20px; }
+        h2 { color: #333; }
+        .montant { font-size: 28px; font-weight: bold; color: #2563eb; margin: 20px 0; }
+      </style>
+    </head>
+    <body>
+      <h2>Confirmez votre paiement</h2>
+      <p>Quantite : ${commande.quantite} L</p>
+      <div class="montant">${commande.montant} FCFA</div>
+
+      <kkiapay-widget
+        amount="${commande.montant}"
+        key="${process.env.KKIAPAY_PUBLIC_KEY}"
+        position="center"
+        sandbox="${process.env.KKIAPAY_SANDBOX}"
+        data="${id}"
+        callback="https://xsmartpump-backend.onrender.com/pay/merci">
+      </kkiapay-widget>
+    </body>
+    </html>
+  `;
+
+  res.send(html);
+});
+
+app.get('/pay/merci', (req, res) => {
+  res.send('<h2>Paiement en cours de traitement, vous pouvez fermer cette page.</h2>');
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur le port ${PORT}`);
