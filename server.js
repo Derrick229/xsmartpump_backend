@@ -51,6 +51,10 @@ app.get('/api/reservoir', async (req, res) => {
   }
 });
 
+app.get('/pay/merci', (req, res) => {
+  res.send('<h2>Paiement en cours de traitement, vous pouvez fermer cette page.</h2>');
+});
+
 app.get('/pay/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -98,9 +102,6 @@ app.get('/pay/:id', async (req, res) => {
   res.send(html);
 });
 
-app.get('/pay/merci', (req, res) => {
-  res.send('<h2>Paiement en cours de traitement, vous pouvez fermer cette page.</h2>');
-});
 
 const { kkiapay } = require('@kkiapay-org/nodejs-sdk');
 
