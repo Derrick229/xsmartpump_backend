@@ -60,8 +60,24 @@ app.get('/api/reservoir', async (req, res) => {
 });
 
 // --- Route spécifique AVANT la route générique ---
-app.get('/pay/merci', (req, res) => {
-  res.send('<h2>Paiement en cours de traitement, vous pouvez fermer cette page.</h2>');
+app.get('/pay/merci', async (req, res) => {
+  const commandeId = req.query.commande_id;
+
+  if (commandeId) {
+    try {
+      const { error } = await supabase
+        .from('Commande')
+        .update({ statut: 'paye' })
+        .eq('id', commandeId);
+
+      if (error) throw error;
+      console.log('Commande', commandeId, 'marquée comme payée (via callback)');
+    } catch (err) {
+      console.error('Erreur mise à jour statut via callback:', err);
+    }
+  }
+
+  res.send('<h2>Paiement réussi ! Vous pouvez fermer cette page.</h2>');
 });
 
 app.get('/pay/:id', async (req, res) => {
@@ -102,7 +118,7 @@ app.get('/pay/:id', async (req, res) => {
         position="center"
         sandbox="${process.env.KKIAPAY_SANDBOX}"
         data="${id}"
-        callback="https://xsmartpump-backend.onrender.com/pay/merci">
+        callback="https://xsmartpump-backend.onrender.com/pay/merci?commande_id=${id}"
       </kkiapay-widget>
     </body>
     </html>
