@@ -118,6 +118,8 @@ app.post('/api/kkiapay/webhook', async (req, res) => {
     return res.status(401).send('Non autorisé');
   }
 
+  console.log('Corps complet du webhook:', JSON.stringify(req.body, null, 2));
+
   const { transactionId, isPaymentSucces, event } = req.body;
   console.log('Webhook reçu:', event, 'succès:', isPaymentSucces);
 
@@ -126,10 +128,8 @@ app.post('/api/kkiapay/webhook', async (req, res) => {
   }
 
   try {
-    const transaction = await k.verify(transactionId);
-    console.log('Transaction complète:', JSON.stringify(transaction, null, 2));
-    const commandeId = transaction.data;
-    
+    const commandeId = req.body.data;
+
     const { error } = await supabase
       .from('Commande')
       .update({ statut: 'paye' })
