@@ -132,7 +132,7 @@ app.post('/api/kkiapay/webhook', async (req, res) => {
     const commandeId = transaction.data;
 
     const { error } = await supabase
-      .from('commandes')
+      .from('Commande')
       .update({ statut: 'paye' })
       .eq('id', commandeId);
 
