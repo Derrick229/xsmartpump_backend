@@ -35,6 +35,22 @@ app.post('/api/commandes', async (req, res) => {
   }
 });
 
+app.get('/api/reservoir', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('reservoir')
+      .select('*')
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json(data);
+  } catch (err) {
+    console.error('Erreur lecture réservoir:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur le port ${PORT}`);
