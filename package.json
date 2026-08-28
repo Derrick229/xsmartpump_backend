@@ -10,8 +10,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@kkiapay-org/nodejs-sdk": "^1.0.7",
     "@supabase/supabase-js": "^2.112.4",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "kkiapay": "^2.0.38"
   }
 }
