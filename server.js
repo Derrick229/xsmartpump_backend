@@ -127,6 +127,9 @@ app.post('/api/kkiapay/webhook', async (req, res) => {
 
   try {
     const transaction = await k.verify(transactionId);
+    console.log('Transaction complète:', JSON.stringify(transaction, null, 2));
+    const commandeId = transaction.data;
+    const transaction = await k.verify(transactionId);
     const commandeId = transaction.data;
 
     const { error } = await supabase
