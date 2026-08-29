@@ -161,6 +161,45 @@ app.post('/api/kkiapay/webhook', async (req, res) => {
   }
 });
 
+app.get('/api/commandes/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { data, error } = await supabase
+      .from('Commande')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ error: 'Commande introuvable' });
+    }
+
+    res.status(200).json(data);
+  } catch (err) {
+    console.error('Erreur lecture commande:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.patch('/api/commandes/:id/annuler', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { error } = await supabase
+      .from('Commande')
+      .update({ statut: 'annule' })
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.status(200).json({ message: 'Commande annulée' });
+  } catch (err) {
+    console.error('Erreur annulation commande:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur le port ${PORT}`);
