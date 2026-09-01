@@ -243,6 +243,28 @@ app.patch('/api/commandes/:id/annuler', async (req, res) => {
   }
 });
 
+app.patch('/api/reservoir', async (req, res) => {
+  const { niveau_litres } = req.body;
+
+  if (niveau_litres === undefined || niveau_litres < 0) {
+    return res.status(400).json({ error: 'niveau_litres requis et positif' });
+  }
+
+  try {
+    const { error } = await supabase
+      .from('reservoir')
+      .update({ niveau_litres, derniere_maj: new Date().toISOString() })
+      .neq('id', 0); // met à jour la seule ligne existante, quel que soit son id
+
+    if (error) throw error;
+
+    res.status(200).json({ message: 'Niveau réservoir mis à jour' });
+  } catch (err) {
+    console.error('Erreur mise à jour réservoir:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur le port ${PORT}`);
