@@ -200,6 +200,47 @@ app.patch('/api/commandes/:id/annuler', async (req, res) => {
   }
 });
 
+// La pompe interroge cette route pour savoir s'il y a une commande à distribuer
+app.get('/api/commandes/a-distribuer', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('Commande')
+      .select('*')
+      .eq('statut', 'paye')
+      .order('created_at', { ascending: true })
+      .limit(1);
+
+    if (error) throw error;
+
+    if (data.length === 0) {
+      return res.status(200).json({ commande: null });
+    }
+
+    res.status(200).json({ commande: data[0] });
+  } catch (err) {
+    console.error('Erreur lecture file de distribution:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// La pompe confirme qu'elle a terminé la distribution
+app.patch('/api/commandes/:id/distribuer', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { error } = await supabase
+      .from('Commande')
+      .update({ statut: 'distribue' })
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.status(200).json({ message: 'Commande marquée comme distribuée' });
+  } catch (err) {
+    console.error('Erreur mise à jour distribution:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur le port ${PORT}`);
