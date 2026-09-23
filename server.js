@@ -203,6 +203,34 @@ app.patch('/api/commandes/:id/distribuer', async (req, res) => {
   }
 });
 
+app.post('/api/commandes/:id/distribuer', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { error } = await supabase
+      .from('Commande')
+      .update({ statut: 'distribue' })
+      .eq('id', id);
+
+    if (error) throw error;
+
+    console.log(`Commande ${id} marquée comme distribuée`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Commande marquée comme distribuée'
+    });
+
+  } catch (err) {
+    console.error('Erreur mise à jour distribution:', err);
+
+    res.status(500).json({
+      success: false,
+      error: 'Erreur serveur'
+    });
+  }
+});
+
 
 app.get('/api/commandes/:id', async (req, res) => {
   const { id } = req.params;
