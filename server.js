@@ -243,27 +243,84 @@ app.patch('/api/commandes/:id/annuler', async (req, res) => {
   }
 });
 
-app.patch('/api/reservoir', async (req, res) => {
+// app.patch('/api/reservoir', async (req, res) => {
+//  const { niveau_litres } = req.body;
+//
+  //if (niveau_litres === undefined || niveau_litres < 0) {
+    //return res.status(400).json({ error: 'niveau_litres requis et positif' });
+  //}
+
+ // try {
+ //   const { error } = await supabase
+ //     .from('reservoir')
+ //     .update({ niveau_litres, derniere_maj: new Date().toISOString() })
+ //     .neq('id', 0); // met à jour la seule ligne existante, quel que soit son id
+
+ // if (error) throw error;
+
+   // res.status(200).json({ message: 'Niveau réservoir mis à jour' });
+ // } catch (err) {
+   // console.error('Erreur mise à jour réservoir:', err);
+  //  res.status(500).json({ error: 'Erreur serveur' });
+ // }
+//});
+
+// =====================================================
+// MISE À JOUR DU NIVEAU DU RÉSERVOIR
+// PATCH : utilisé par le site/écran
+// POST  : utilisé par la pompe via A7670C
+// =====================================================
+
+async function mettreAJourReservoir(req, res) {
   const { niveau_litres } = req.body;
 
-  if (niveau_litres === undefined || niveau_litres < 0) {
-    return res.status(400).json({ error: 'niveau_litres requis et positif' });
+  if (
+    niveau_litres === undefined ||
+    niveau_litres === null ||
+    isNaN(niveau_litres) ||
+    niveau_litres < 0
+  ) {
+    return res.status(400).json({
+      error: 'niveau_litres requis et doit être positif'
+    });
   }
 
   try {
     const { error } = await supabase
       .from('reservoir')
-      .update({ niveau_litres, derniere_maj: new Date().toISOString() })
-      .neq('id', 0); // met à jour la seule ligne existante, quel que soit son id
+      .update({
+        niveau_litres: Number(niveau_litres),
+        derniere_maj: new Date().toISOString()
+      })
+      .neq('id', 0);
 
     if (error) throw error;
 
-    res.status(200).json({ message: 'Niveau réservoir mis à jour' });
+    console.log(
+      `Niveau réservoir mis à jour : ${niveau_litres} L`
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Niveau réservoir mis à jour',
+      niveau_litres: Number(niveau_litres)
+    });
+
   } catch (err) {
     console.error('Erreur mise à jour réservoir:', err);
-    res.status(500).json({ error: 'Erreur serveur' });
+
+    res.status(500).json({
+      success: false,
+      error: 'Erreur serveur'
+    });
   }
-});
+}
+
+// PATCH — conserve le fonctionnement actuel
+app.patch('/api/reservoir', mettreAJourReservoir);
+
+// POST — utilisé par le A7670C
+app.post('/api/reservoir', mettreAJourReservoir);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
