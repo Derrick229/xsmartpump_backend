@@ -355,20 +355,3 @@ app.listen(PORT, () => {
   console.log(`Serveur démarré sur le port ${PORT}`);
 });
 
-app.patch('/api/commandes/:id/statut', async (req, res) => {
-  const { id } = req.params;
-  const { statut } = req.body;
-
-  try {
-    const { error } = await supabase
-      .from('Commande')
-      .update({ statut })
-      .eq('id', id);
-
-    if (error) throw error;
-    res.status(200).json({ message: 'Statut mis à jour' });
-  } catch (err) {
-    console.error('Erreur mise à jour statut:', err);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
