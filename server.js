@@ -92,8 +92,7 @@ app.get('/pay/:id', async (req, res) => {
   if (error || !commande) {
     return res.status(404).send('Commande introuvable');
   }
-
-  const html = `
+const html = `
     <!DOCTYPE html>
     <html>
     <head>
@@ -118,7 +117,9 @@ app.get('/pay/:id', async (req, res) => {
         position="center"
         sandbox="${process.env.KKIAPAY_SANDBOX}"
         data="${id}"
-        callback="https://xsmartpump-backend.onrender.com/pay/merci?commande_id=${id}"
+        name="XSMARTPUMP"
+        email="xsmartpump.benin@gmail.com"
+        callback="https://xsmartpump-backend.onrender.com/pay/merci?commande_id=${id}">
       </kkiapay-widget>
     </body>
     </html>
@@ -126,7 +127,6 @@ app.get('/pay/:id', async (req, res) => {
 
   res.send(html);
 });
-
 app.post('/api/kkiapay/webhook', async (req, res) => {
   const signature = req.headers['x-kkiapay-secret'];
   if (signature !== process.env.KKIAPAY_WEBHOOK_SECRET) {
