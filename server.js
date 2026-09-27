@@ -351,3 +351,90 @@ app.listen(PORT, () => {
   console.log(`Serveur démarré sur le port ${PORT}`);
 });
 
+//Connexion login
+
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
+app.post('/api/login', async (req, res) => {
+  const { nom_utilisateur, mot_de_passe } = req.body;
+
+  if (!nom_utilisateur || !mot_de_passe) {
+    return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis' });
+  }
+
+  try {
+    const { data: utilisateur, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('nom_utilisateur', nom_utilisateur)
+      .single();
+
+    if (error || !utilisateur) {
+      return res.status(401).json({ error: 'Identifiants incorrects' });
+    }
+
+    const motDePasseValide = await bcrypt.compare(mot_de_passe, utilisateur.mot_de_passe_hash);
+
+    if (!motDePasseValide) {
+      return res.status(401).json({ error: 'Identifiants incorrects' });
+    }
+
+    const token = jwt.sign(
+      { userId: utilisateur.id, deviceId: utilisateur.device_id, role: utilisateur.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({
+      token,
+      doit_changer_mdp: utilisateur.doit_changer_mdp,
+      device_id: utilisateur.device_id,
+      role: utilisateur.role
+    });
+  } catch (err) {
+    console.error('Erreur login:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+//Changer le mot de passe
+
+app.post('/api/changer-mot-de-passe', async (req, res) => {
+  const { userId, ancien_mdp, nouveau_mdp } = req.body;
+
+  if (!nouveau_mdp || nouveau_mdp.length < 6) {
+    return res.status(400).json({ error: 'Le nouveau mot de passe doit faire au moins 6 caractères' });
+  }
+
+  try {
+    const { data: utilisateur, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error || !utilisateur) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+
+    const ancienValide = await bcrypt.compare(ancien_mdp, utilisateur.mot_de_passe_hash);
+    if (!ancienValide) {
+      return res.status(401).json({ error: 'Ancien mot de passe incorrect' });
+    }
+
+    const nouveauHash = await bcrypt.hash(nouveau_mdp, 10);
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ mot_de_passe_hash: nouveauHash, doit_changer_mdp: false })
+      .eq('id', userId);
+
+    if (updateError) throw updateError;
+
+    res.status(200).json({ message: 'Mot de passe mis à jour' });
+  } catch (err) {
+    console.error('Erreur changement mot de passe:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
