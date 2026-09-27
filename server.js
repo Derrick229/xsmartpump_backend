@@ -345,11 +345,6 @@ async function mettreAJourReservoir(req, res) {
 
 app.patch('/api/reservoir/:deviceId', mettreAJourReservoir);
 app.post('/api/reservoir/:deviceId', mettreAJourReservoir);
-// PATCH — conserve le fonctionnement actuel
-app.patch('/api/reservoir', mettreAJourReservoir);
-
-// POST — utilisé par le A7670C
-app.post('/api/reservoir', mettreAJourReservoir);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
