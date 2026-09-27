@@ -12,8 +12,10 @@
   "dependencies": {
     "@kkiapay-org/nodejs-sdk": "^1.0.7",
     "@supabase/supabase-js": "^2.112.4",
+    "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "kkiapay": "^2.0.38"
   }
 }
