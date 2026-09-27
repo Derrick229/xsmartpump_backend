@@ -20,16 +20,19 @@ app.get('/', (req, res) => {
 });
 
 app.post('/api/commandes', async (req, res) => {
-  const { quantite, montant } = req.body;
+  const { quantite, montant, device_id } = req.body;
 
   if (quantite === undefined || montant === undefined || quantite <= 0 || montant <= 0) {
     return res.status(400).json({ error: 'Quantité et montant requis et doivent être positifs' });
+  }
+  if (!device_id) {
+    return res.status(400).json({ error: 'device_id requis' });
   }
 
   try {
     const { data, error } = await supabase
       .from('Commande')
-      .insert([{ quantite, montant, statut: 'en_attente' }])
+      .insert([{ quantite, montant, statut: 'en_attente', device_id }])
       .select()
       .single();
 
@@ -42,12 +45,13 @@ app.post('/api/commandes', async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-
-app.get('/api/reservoir', async (req, res) => {
+app.get('/api/reservoir/:deviceId', async (req, res) => {
+  const { deviceId } = req.params;
   try {
     const { data, error } = await supabase
       .from('reservoir')
       .select('*')
+      .eq('device_id', deviceId)
       .single();
 
     if (error) throw error;
@@ -58,7 +62,6 @@ app.get('/api/reservoir', async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-
 // --- Route spécifique AVANT la route générique ---
 app.get('/pay/merci', async (req, res) => {
   const commandeId = req.query.commande_id;
@@ -162,12 +165,14 @@ app.post('/api/kkiapay/webhook', async (req, res) => {
 });
 
 // La pompe interroge cette route pour savoir s'il y a une commande à distribuer
-app.get('/api/commandes/a-distribuer', async (req, res) => {
+app.get('/api/commandes/a-distribuer/:deviceId', async (req, res) => {
+  const { deviceId } = req.params;
   try {
     const { data, error } = await supabase
       .from('Commande')
       .select('*')
       .eq('statut', 'paye')
+      .eq('device_id', deviceId)
       .order('created_at', { ascending: true })
       .limit(1);
 
@@ -183,7 +188,6 @@ app.get('/api/commandes/a-distribuer', async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-
 // La pompe confirme qu'elle a terminé la distribution
 app.patch('/api/commandes/:id/distribuer', async (req, res) => {
   const { id } = req.params;
@@ -300,6 +304,7 @@ app.patch('/api/commandes/:id/annuler', async (req, res) => {
 // =====================================================
 
 async function mettreAJourReservoir(req, res) {
+  const { deviceId } = req.params;
   const { niveau_litres } = req.body;
 
   if (
@@ -320,13 +325,11 @@ async function mettreAJourReservoir(req, res) {
         niveau_litres: Number(niveau_litres),
         derniere_maj: new Date().toISOString()
       })
-      .neq('id', 0);
+      .eq('device_id', deviceId);
 
     if (error) throw error;
 
-    console.log(
-      `Niveau réservoir mis à jour : ${niveau_litres} L`
-    );
+    console.log(`Niveau réservoir mis à jour (device ${deviceId}): ${niveau_litres} L`);
 
     res.status(200).json({
       success: true,
@@ -336,14 +339,12 @@ async function mettreAJourReservoir(req, res) {
 
   } catch (err) {
     console.error('Erreur mise à jour réservoir:', err);
-
-    res.status(500).json({
-      success: false,
-      error: 'Erreur serveur'
-    });
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
   }
 }
 
+app.patch('/api/reservoir/:deviceId', mettreAJourReservoir);
+app.post('/api/reservoir/:deviceId', mettreAJourReservoir);
 // PATCH — conserve le fonctionnement actuel
 app.patch('/api/reservoir', mettreAJourReservoir);
 
