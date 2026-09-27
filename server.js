@@ -353,7 +353,7 @@ app.listen(PORT, () => {
 
 //Connexion login
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 app.post('/api/login', async (req, res) => {
