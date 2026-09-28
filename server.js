@@ -351,6 +351,30 @@ app.listen(PORT, () => {
   console.log(`Serveur démarré sur le port ${PORT}`);
 });
 
+function verifierToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // format: "Bearer <token>"
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token manquant' });
+  }
+
+  try {
+    const decode = jwt.verify(token, process.env.JWT_SECRET);
+    req.utilisateur = decode; // { userId, deviceId, role }
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Token invalide ou expiré' });
+  }
+}
+
+function verifierAdmin(req, res, next) {
+  if (req.utilisateur.role !== 'admin') {
+    return res.status(403).json({ error: 'Accès réservé à l\'administrateur' });
+  }
+  next();
+}
+
 //Connexion login
 
 const bcrypt = require('bcryptjs');
@@ -435,6 +459,67 @@ app.post('/api/changer-mot-de-passe', async (req, res) => {
     res.status(200).json({ message: 'Mot de passe mis à jour' });
   } catch (err) {
     console.error('Erreur changement mot de passe:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+//Routes admin creer un dispositif 
+
+app.post('/api/admin/devices', verifierToken, verifierAdmin, async (req, res) => {
+  const { numero_dispositif, nom } = req.body;
+
+  if (!numero_dispositif) {
+    return res.status(400).json({ error: 'numero_dispositif requis' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('devices')
+      .insert([{ numero_dispositif, nom }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Crée aussi la ligne de réservoir associée
+    await supabase.from('reservoir').insert([{ device_id: data.id, niveau_litres: 0 }]);
+
+    res.status(201).json(data);
+  } catch (err) {
+    console.error('Erreur création device:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+//Creer un propriétaire 
+
+app.post('/api/admin/users', verifierToken, verifierAdmin, async (req, res) => {
+  const { device_id, nom_utilisateur, mot_de_passe_temporaire } = req.body;
+
+  if (!device_id || !nom_utilisateur || !mot_de_passe_temporaire) {
+    return res.status(400).json({ error: 'device_id, nom_utilisateur et mot_de_passe_temporaire requis' });
+  }
+
+  try {
+    const hash = await bcrypt.hash(mot_de_passe_temporaire, 10);
+
+    const { data, error } = await supabase
+      .from('users')
+      .insert([{
+        device_id,
+        nom_utilisateur,
+        mot_de_passe_hash: hash,
+        doit_changer_mdp: true,
+        role: 'proprietaire'
+      }])
+      .select('id, nom_utilisateur, device_id, role')
+      .single();
+
+    if (error) throw error;
+
+    res.status(201).json(data);
+  } catch (err) {
+    console.error('Erreur création utilisateur:', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
