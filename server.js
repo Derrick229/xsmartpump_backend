@@ -305,44 +305,43 @@ app.patch('/api/commandes/:id/annuler', async (req, res) => {
 
 async function mettreAJourReservoir(req, res) {
   const { deviceId } = req.params;
-  const { niveau_litres } = req.body;
-
-  if (
-    niveau_litres === undefined ||
-    niveau_litres === null ||
-    isNaN(niveau_litres) ||
-    niveau_litres < 0
-  ) {
-    return res.status(400).json({
-      error: 'niveau_litres requis et doit être positif'
-    });
-  }
+  const { niveau_litres, pourcentage } = req.body;
 
   try {
+    const { data: device, error: errDevice } = await supabase
+      .from('devices')
+      .select('capacite_litres')
+      .eq('id', deviceId)
+      .single();
+
+    if (errDevice || !device) {
+      return res.status(404).json({ error: 'Dispositif introuvable' });
+    }
+
+    let litres;
+    const pct = Number(pourcentage);
+
+    if (pourcentage !== undefined && pourcentage !== null && !isNaN(pct) && pct >= 0 && pct <= 100 && device.capacite_litres) {
+      litres = Math.round((pct / 100) * device.capacite_litres * 100) / 100;
+    } else if (niveau_litres !== undefined && niveau_litres !== null && !isNaN(niveau_litres) && niveau_litres >= 0) {
+      litres = Number(niveau_litres);
+    } else {
+      return res.status(400).json({ error: 'niveau_litres ou pourcentage valide requis' });
+    }
+
     const { error } = await supabase
       .from('reservoir')
-      .update({
-        niveau_litres: Number(niveau_litres),
-        derniere_maj: new Date().toISOString()
-      })
+      .update({ niveau_litres: litres, derniere_maj: new Date().toISOString() })
       .eq('device_id', deviceId);
 
     if (error) throw error;
 
-    console.log(`Niveau réservoir mis à jour (device ${deviceId}): ${niveau_litres} L`);
-
-    res.status(200).json({
-      success: true,
-      message: 'Niveau réservoir mis à jour',
-      niveau_litres: Number(niveau_litres)
-    });
-
+    res.status(200).json({ success: true, niveau_litres: litres });
   } catch (err) {
     console.error('Erreur mise à jour réservoir:', err);
     res.status(500).json({ success: false, error: 'Erreur serveur' });
   }
 }
-
 app.patch('/api/reservoir/:deviceId', mettreAJourReservoir);
 app.post('/api/reservoir/:deviceId', mettreAJourReservoir);
 
@@ -409,6 +408,23 @@ app.post('/api/login', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+    let capaciteDefinie = false;
+if (utilisateur.device_id) {
+  const { data: device } = await supabase
+    .from('devices')
+    .select('capacite_litres')
+    .eq('id', utilisateur.device_id)
+    .single();
+  capaciteDefinie = !!(device && device.capacite_litres);
+}
+
+res.status(200).json({
+  token,
+  doit_changer_mdp: utilisateur.doit_changer_mdp,
+  capacite_definie: capaciteDefinie,
+  device_id: utilisateur.device_id,
+  role: utilisateur.role
+});
 
     res.status(200).json({
       token,
@@ -522,4 +538,225 @@ app.post('/api/admin/users', verifierToken, verifierAdmin, async (req, res) => {
     console.error('Erreur création utilisateur:', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+
+function resoudreDeviceId(req) {
+  if (req.utilisateur.role === 'admin' && req.query.device_id) {
+    return req.query.device_id;
+  }
+  return req.utilisateur.deviceId;
+}
+
+const STATUTS_PAYES = ['paye', 'demarrage', 'distribution', 'distribue'];
+
+// Début de la journée en heure du Bénin (UTC+1)
+function debutJourBenin() {
+  const decale = new Date(Date.now() + 60 * 60 * 1000);
+  decale.setUTCHours(0, 0, 0, 0);
+  return new Date(decale.getTime() - 60 * 60 * 1000);
+}
+
+app.get('/api/dashboard/resume', verifierToken, async (req, res) => {
+  const deviceId = resoudreDeviceId(req);
+  if (!deviceId) return res.status(400).json({ error: 'Aucun dispositif associé à ce compte' });
+
+  try {
+    const { data, error } = await supabase
+      .from('Commande')
+      .select('montant, quantite, statut, created_at')
+      .eq('device_id', deviceId);
+
+    if (error) throw error;
+
+    const debutAujourdhui = debutJourBenin();
+    const il7jours = new Date(debutAujourdhui.getTime() - 6 * 24 * 3600 * 1000);
+    const il30jours = new Date(debutAujourdhui.getTime() - 29 * 24 * 3600 * 1000);
+
+    const resume = {
+      nb_commandes: data.length,
+      nb_en_attente: 0,
+      nb_payees_en_cours: 0,
+      nb_distribuees: 0,
+      nb_annulees: 0,
+      chiffre_affaires_total: 0,
+      chiffre_affaires_aujourdhui: 0,
+      chiffre_affaires_7_jours: 0,
+      chiffre_affaires_30_jours: 0,
+      litres_distribues_total: 0
+    };
+
+    for (const c of data) {
+      const date = new Date(c.created_at);
+
+      if (c.statut === 'en_attente') resume.nb_en_attente++;
+      if (c.statut === 'annule') resume.nb_annulees++;
+      if (['paye', 'demarrage', 'distribution'].includes(c.statut)) resume.nb_payees_en_cours++;
+      if (c.statut === 'distribue') {
+        resume.nb_distribuees++;
+        resume.litres_distribues_total += Number(c.quantite);
+      }
+
+      if (STATUTS_PAYES.includes(c.statut)) {
+        resume.chiffre_affaires_total += c.montant;
+        if (date >= debutAujourdhui) resume.chiffre_affaires_aujourdhui += c.montant;
+        if (date >= il7jours) resume.chiffre_affaires_7_jours += c.montant;
+        if (date >= il30jours) resume.chiffre_affaires_30_jours += c.montant;
+      }
+    }
+
+    resume.litres_distribues_total = Math.round(resume.litres_distribues_total * 100) / 100;
+
+    res.status(200).json(resume);
+  } catch (err) {
+    console.error('Erreur résumé dashboard:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.get('/api/dashboard/commandes', verifierToken, async (req, res) => {
+  const deviceId = resoudreDeviceId(req);
+  if (!deviceId) return res.status(400).json({ error: 'Aucun dispositif associé à ce compte' });
+
+  const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+  const offset = parseInt(req.query.offset) || 0;
+  const { statut } = req.query;
+
+  try {
+    let requete = supabase
+      .from('Commande')
+      .select('id, quantite, montant, statut, created_at')
+      .eq('device_id', deviceId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (statut) requete = requete.eq('statut', statut);
+
+    const { data, error } = await requete;
+    if (error) throw error;
+
+    res.status(200).json({ commandes: data, limit, offset });
+  } catch (err) {
+    console.error('Erreur historique dashboard:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+//const CAPACITE_RESERVOIR_L = 25; // provisoire, voir la remarque plus bas
+
+app.get('/api/dashboard/reservoir', verifierToken, async (req, res) => {
+  const deviceId = resoudreDeviceId(req);
+  if (!deviceId) return res.status(400).json({ error: 'Aucun dispositif associé à ce compte' });
+
+  try {
+    const { data: reservoir, error } = await supabase
+      .from('reservoir')
+      .select('niveau_litres, derniere_maj')
+      .eq('device_id', deviceId)
+      .single();
+    if (error) throw error;
+
+    const { data: device } = await supabase
+      .from('devices')
+      .select('capacite_litres, seuil_alerte_litres')
+      .eq('id', deviceId)
+      .single();
+
+    const capacite = device ? device.capacite_litres : null;
+    const seuil = device ? device.seuil_alerte_litres : null;
+
+    res.status(200).json({
+      niveau_litres: reservoir.niveau_litres,
+      capacite_litres: capacite,
+      capacite_definie: !!capacite,
+      pourcentage: capacite ? Math.round((reservoir.niveau_litres / capacite) * 100) : null,
+      seuil_alerte_litres: seuil,
+      niveau_bas: seuil !== null && seuil !== undefined ? reservoir.niveau_litres <= seuil : null,
+      derniere_maj: reservoir.derniere_maj
+    });
+  } catch (err) {
+    console.error('Erreur réservoir dashboard:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+app.get('/api/admin/devices', verifierToken, verifierAdmin, async (req, res) => {
+  const { data, error } = await supabase.from('devices').select('*').order('created_at');
+  if (error) return res.status(500).json({ error: 'Erreur serveur' });
+  res.status(200).json(data);
+});
+
+app.get('/api/admin/users', verifierToken, verifierAdmin, async (req, res) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, nom_utilisateur, device_id, role, doit_changer_mdp, created_at')
+    .order('created_at');
+  if (error) return res.status(500).json({ error: 'Erreur serveur' });
+  res.status(200).json(data);
+});
+
+app.get('/api/dashboard/parametres', verifierToken, async (req, res) => {
+  const deviceId = resoudreDeviceId(req);
+  if (!deviceId) return res.status(400).json({ error: 'Aucun dispositif associé à ce compte' });
+
+  const { data, error } = await supabase
+    .from('devices')
+    .select('numero_dispositif, nom, capacite_litres')
+    .eq('id', deviceId)
+    .single();
+
+  if (error || !data) return res.status(404).json({ error: 'Dispositif introuvable' });
+  res.status(200).json({ ...data, capacite_definie: !!data.capacite_litres });
+});
+
+app.get('/api/dashboard/parametres', verifierToken, async (req, res) => {
+  const deviceId = resoudreDeviceId(req);
+  if (!deviceId) return res.status(400).json({ error: 'Aucun dispositif associé à ce compte' });
+
+  const { data, error } = await supabase
+    .from('devices')
+    .select('numero_dispositif, nom, capacite_litres, seuil_alerte_litres')
+    .eq('id', deviceId)
+    .single();
+
+  if (error || !data) return res.status(404).json({ error: 'Dispositif introuvable' });
+
+  res.status(200).json({
+    ...data,
+    capacite_definie: !!data.capacite_litres,
+    seuil_definie: !!data.seuil_alerte_litres
+  });
+});
+
+app.patch('/api/dashboard/parametres', verifierToken, async (req, res) => {
+  const deviceId = resoudreDeviceId(req);
+  if (!deviceId) return res.status(400).json({ error: 'Aucun dispositif associé à ce compte' });
+
+  const misesAJour = {};
+
+  if (req.body.capacite_litres !== undefined) {
+    const capacite = Number(req.body.capacite_litres);
+    if (isNaN(capacite) || capacite <= 0 || capacite > 100000) {
+      return res.status(400).json({ error: 'capacite_litres doit être un nombre positif (maximum 100000)' });
+    }
+    misesAJour.capacite_litres = capacite;
+  }
+
+  if (req.body.seuil_alerte_litres !== undefined) {
+    const seuil = Number(req.body.seuil_alerte_litres);
+    if (isNaN(seuil) || seuil < 0) {
+      return res.status(400).json({ error: 'seuil_alerte_litres doit être un nombre positif ou nul' });
+    }
+    misesAJour.seuil_alerte_litres = seuil;
+  }
+
+  if (Object.keys(misesAJour).length === 0) {
+    return res.status(400).json({ error: 'Aucun champ à mettre à jour' });
+  }
+
+  const { error } = await supabase
+    .from('devices')
+    .update(misesAJour)
+    .eq('id', deviceId);
+
+  if (error) return res.status(500).json({ error: 'Erreur serveur' });
+  res.status(200).json({ message: 'Paramètres mis à jour', ...misesAJour });
 });
