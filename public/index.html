@@ -814,6 +814,7 @@
       var params = await api("/api/dashboard/parametres");
       document.getElementById("set-cap").value = params.capacite_litres || "";
       document.getElementById("set-seuil").value = params.seuil_alerte_litres || "";
+      document.getElementById("set-tel").value = params.telephone_proprietaire || "";
       state.deviceLabel = params.nom || params.numero_dispositif;
       document.getElementById("device-tag").innerHTML = "Dispositif : <b>" + (state.deviceLabel || "—") + "</b>";
     } catch (err) {
