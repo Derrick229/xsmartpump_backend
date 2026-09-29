@@ -744,7 +744,7 @@ app.get('/api/dashboard/parametres', verifierToken, async (req, res) => {
 
   const { data, error } = await supabase
     .from('devices')
-    .select('numero_dispositif, nom, capacite_litres, seuil_alerte_litres')
+    .select('numero_dispositif, nom, capacite_litres, seuil_alerte_litres, telephone_proprietaire')
     .eq('id', deviceId)
     .single();
 
@@ -778,6 +778,15 @@ app.patch('/api/dashboard/parametres', verifierToken, async (req, res) => {
     }
     misesAJour.seuil_alerte_litres = seuil;
   }
+  if (req.body.telephone_proprietaire !== undefined) {
+    const tel = String(req.body.telephone_proprietaire).trim();
+    if (tel && !/^\+?[0-9]{8,15}$/.test(tel)) {
+      return res.status(400).json({ error: 'Numéro de téléphone invalide (utilisez le format +229XXXXXXXX)' });
+    }
+    misesAJour.telephone_proprietaire = tel;
+  }
+
+  
   if (req.body.telephone_proprietaire !== undefined) {
   misesAJour.telephone_proprietaire = String(req.body.telephone_proprietaire).trim();
    }
