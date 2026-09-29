@@ -386,7 +386,9 @@ app.post('/api/login', async (req, res) => {
   const { nom_utilisateur, mot_de_passe } = req.body;
 
   if (!nom_utilisateur || !mot_de_passe) {
-    return res.status(400).json({ error: 'Nom d\'utilisateur et mot de passe requis' });
+    return res.status(400).json({
+      error: 'Nom d\'utilisateur et mot de passe requis'
+    });
   }
 
   try {
@@ -397,45 +399,59 @@ app.post('/api/login', async (req, res) => {
       .single();
 
     if (error || !utilisateur) {
-      return res.status(401).json({ error: 'Identifiants incorrects' });
+      return res.status(401).json({
+        error: 'Identifiants incorrects'
+      });
     }
 
-    const motDePasseValide = await bcrypt.compare(mot_de_passe, utilisateur.mot_de_passe_hash);
+    const motDePasseValide = await bcrypt.compare(
+      mot_de_passe,
+      utilisateur.mot_de_passe_hash
+    );
 
     if (!motDePasseValide) {
-      return res.status(401).json({ error: 'Identifiants incorrects' });
+      return res.status(401).json({
+        error: 'Identifiants incorrects'
+      });
     }
 
     const token = jwt.sign(
-      { userId: utilisateur.id, deviceId: utilisateur.device_id, role: utilisateur.role },
+      {
+        userId: utilisateur.id,
+        deviceId: utilisateur.device_id,
+        role: utilisateur.role
+      },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
     let capaciteDefinie = false;
-if (utilisateur.device_id) {
-  const { data: device } = await supabase
-    .from('devices')
-    .select('capacite_litres')
-    .eq('id', utilisateur.device_id)
-    .single();
-  capaciteDefinie = !!(device && device.capacite_litres);
-}
 
-res.status(200).json({
-  token,
-  doit_changer_mdp: utilisateur.doit_changer_mdp,
-  capacite_definie: capaciteDefinie,
-  device_id: utilisateur.device_id,
-  role: utilisateur.role
-});
+    if (utilisateur.device_id) {
+      const { data: device } = await supabase
+        .from('devices')
+        .select('capacite_litres')
+        .eq('id', utilisateur.device_id)
+        .single();
 
-    } catch (err) {
+      capaciteDefinie = !!(device && device.capacite_litres);
+    }
+
+    res.status(200).json({
+      token,
+      doit_changer_mdp: utilisateur.doit_changer_mdp,
+      capacite_definie: capaciteDefinie,
+      device_id: utilisateur.device_id,
+      role: utilisateur.role
+    });
+
+  } catch (err) {
     console.error('Erreur login:', err);
-    res.status(500).json({ error: 'Erreur serveur' });
+    res.status(500).json({
+      error: 'Erreur serveur'
+    });
   }
-});
-
-//Changer le mot de passe
+});//Changer le mot de passe
 
 app.post('/api/changer-mot-de-passe', verifierToken, async (req, res) => {
   const { ancien_mdp, nouveau_mdp } = req.body;
