@@ -429,13 +429,7 @@ res.status(200).json({
   role: utilisateur.role
 });
 
-    res.status(200).json({
-      token,
-      doit_changer_mdp: utilisateur.doit_changer_mdp,
-      device_id: utilisateur.device_id,
-      role: utilisateur.role
-    });
-  } catch (err) {
+    } catch (err) {
     console.error('Erreur login:', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
