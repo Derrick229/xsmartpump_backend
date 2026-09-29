@@ -1,10 +1,13 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const { kkiapay } = require('@kkiapay-org/nodejs-sdk');
 
 const app = express();
 app.use(express.json());
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
@@ -759,4 +762,8 @@ app.patch('/api/dashboard/parametres', verifierToken, async (req, res) => {
 
   if (error) return res.status(500).json({ error: 'Erreur serveur' });
   res.status(200).json({ message: 'Paramètres mis à jour', ...misesAJour });
+});
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
