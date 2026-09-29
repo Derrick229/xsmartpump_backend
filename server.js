@@ -440,8 +440,9 @@ res.status(200).json({
 
 //Changer le mot de passe
 
-app.post('/api/changer-mot-de-passe', async (req, res) => {
-  const { userId, ancien_mdp, nouveau_mdp } = req.body;
+app.post('/api/changer-mot-de-passe', verifierToken, async (req, res) => {
+  const { ancien_mdp, nouveau_mdp } = req.body;
+  const userId = req.utilisateur.userId;
 
   if (!nouveau_mdp || nouveau_mdp.length < 6) {
     return res.status(400).json({ error: 'Le nouveau mot de passe doit faire au moins 6 caractères' });
@@ -478,7 +479,6 @@ app.post('/api/changer-mot-de-passe', async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-
 //Routes admin creer un dispositif 
 
 app.post('/api/admin/devices', verifierToken, verifierAdmin, async (req, res) => {
