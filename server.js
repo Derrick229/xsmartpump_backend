@@ -313,7 +313,7 @@ async function mettreAJourReservoir(req, res) {
   try {
     const { data: device, error: errDevice } = await supabase
       .from('devices')
-      .select('capacite_litres')
+      .select('capacite_litres, seuil_alerte_litres, telephone_proprietaire, alerte_envoyee')
       .eq('id', deviceId)
       .single();
 
@@ -323,7 +323,6 @@ async function mettreAJourReservoir(req, res) {
 
     let litres;
     const pct = Number(pourcentage);
-
     if (pourcentage !== undefined && pourcentage !== null && !isNaN(pct) && pct >= 0 && pct <= 100 && device.capacite_litres) {
       litres = Math.round((pct / 100) * device.capacite_litres * 100) / 100;
     } else if (niveau_litres !== undefined && niveau_litres !== null && !isNaN(niveau_litres) && niveau_litres >= 0) {
@@ -339,7 +338,26 @@ async function mettreAJourReservoir(req, res) {
 
     if (error) throw error;
 
-    res.status(200).json({ success: true, niveau_litres: litres });
+    // --- Détection du franchissement du seuil ---
+    let alerteSms = false;
+    const seuil = device.seuil_alerte_litres;
+
+    if (seuil !== null && seuil !== undefined) {
+      if (litres <= seuil && !device.alerte_envoyee) {
+        alerteSms = true;
+        await supabase.from('devices').update({ alerte_envoyee: true }).eq('id', deviceId);
+      } else if (litres > seuil && device.alerte_envoyee) {
+        await supabase.from('devices').update({ alerte_envoyee: false }).eq('id', deviceId);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      niveau_litres: litres,
+      alerte_sms: alerteSms,
+      telephone: alerteSms ? device.telephone_proprietaire : null,
+      message_sms: alerteSms ? `XSMARTPUMP: niveau du reservoir bas (${litres} L restants). Pensez au reapprovisionnement.` : null
+    });
   } catch (err) {
     console.error('Erreur mise à jour réservoir:', err);
     res.status(500).json({ success: false, error: 'Erreur serveur' });
@@ -760,6 +778,9 @@ app.patch('/api/dashboard/parametres', verifierToken, async (req, res) => {
     }
     misesAJour.seuil_alerte_litres = seuil;
   }
+  if (req.body.telephone_proprietaire !== undefined) {
+  misesAJour.telephone_proprietaire = String(req.body.telephone_proprietaire).trim();
+   }
 
   if (Object.keys(misesAJour).length === 0) {
     return res.status(400).json({ error: 'Aucun champ à mettre à jour' });
