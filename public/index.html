@@ -471,7 +471,7 @@
         <div class="settings-grid">
           <div class="panel">
             <h3>Réservoir</h3>
-            <p class="sub">Capacité totale et seuil d'alerte de niveau bas.</p>
+            <p class="sub">Capacité totale, seuil d'alerte et numéro à prévenir en cas de niveau bas.</p>
             <div class="err-msg" id="settings-res-err"></div>
             <form id="settings-res-form">
               <div class="field">
@@ -483,8 +483,9 @@
                 <input id="set-seuil" type="number" min="0" step="0.5">
               </div>
               <div class="field">
-                <label for="set-numero">Numéro de téléphone (SMS Alerte)</label>
-                <input id="set-numero" type="text" placeholder="+2290197000000" required>
+                <label for="set-tel">Numéro à alerter par SMS</label>
+                <input id="set-tel" type="text" placeholder="+22901XXXXXXXX" required>
+                <div class="hint">Reçoit un SMS dès que le niveau passe sous le seuil ci-dessus.</div>
               </div>
               <button class="btn" type="submit" id="settings-res-btn">Enregistrer</button>
               <div class="ok-msg" id="settings-res-ok">Paramètres enregistrés.</div>
