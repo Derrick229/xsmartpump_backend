@@ -765,12 +765,39 @@ app.patch('/api/dashboard/parametres', verifierToken, async (req, res) => {
     return res.status(400).json({ error: 'Aucun champ à mettre à jour' });
   }
 
-  const { error } = await supabase
-    .from('devices')
-    .update(misesAJour)
-    .eq('id', deviceId);
+//  const { error } = await supabase
+//    .from('devices')
+//    .update(misesAJour)
+//    .eq('id', deviceId);
 
-  if (error) return res.status(500).json({ error: 'Erreur serveur' });
+//  if (error) return res.status(500).json({ error: 'Erreur serveur' });
+const { data: deviceMaj, error } = await supabase
+  .from('devices')
+  .update(misesAJour)
+  .eq('id', deviceId)
+  .select()
+  .single();
+
+if (error) {
+  console.error('=================================');
+  console.error('ERREUR PARAMETRES DEVICE');
+  console.error('Device ID :', deviceId);
+  console.error('Données envoyées :', misesAJour);
+  console.error('Erreur Supabase :', error);
+  console.error('=================================');
+
+  return res.status(500).json({
+    error: 'Erreur serveur',
+    details: error.message
+  });
+}
+
+console.log('Paramètres sauvegardés :', deviceMaj);
+
+res.status(200).json({
+  message: 'Paramètres mis à jour',
+  ...misesAJour
+});
   res.status(200).json({ message: 'Paramètres mis à jour', ...misesAJour });
 });
 
