@@ -831,6 +831,10 @@
 
     try {
       var body = { capacite_litres: Number(document.getElementById("set-cap").value) };
+      var numero = document.getElementById("set-tel").value;
+      if (numero !== "") {
+       body.telephone_proprietaire = numero;
+       }
       var seuil = document.getElementById("set-seuil").value;
       if (seuil !== "") body.seuil_alerte_litres = Number(seuil);
       await api("/api/dashboard/parametres", { method: "PATCH", body: body });
