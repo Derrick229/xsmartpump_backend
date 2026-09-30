@@ -921,6 +921,17 @@ function switchPanel(name) {
     loadSettingsForm();
   }
 }
+    /* Navigation entre les panneaux */
+  document.querySelectorAll(
+    ".navitem[data-panel], .mobile-nav button[data-panel]"
+  ).forEach(function (button) {
+
+    button.addEventListener("click", function () {
+      var panel = button.getAttribute("data-panel");
+      switchPanel(panel);
+    });
+
+  });
   function logout() {
     state.token = null;
     try { localStorage.removeItem("xsp_token"); } catch (e) {}
