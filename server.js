@@ -652,30 +652,42 @@ app.get('/api/dashboard/commandes', verifierToken, async (req, res) => {
   const deviceId = resoudreDeviceId(req);
   if (!deviceId) return res.status(400).json({ error: 'Aucun dispositif associé à ce compte' });
 
-  const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+  const limit = Math.min(parseInt(req.query.limit) || 20, 200);
   const offset = parseInt(req.query.offset) || 0;
-  const { statut } = req.query;
+  const { statut, date_debut, date_fin } = req.query;
+  const tri = req.query.tri || 'date_desc';
 
   try {
     let requete = supabase
       .from('Commande')
-      .select('id, quantite, montant, statut, created_at')
-      .eq('device_id', deviceId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .select('id, quantite, montant, statut, created_at', { count: 'exact' })
+      .eq('device_id', deviceId);
 
     if (statut) requete = requete.eq('statut', statut);
+    if (date_debut) requete = requete.gte('created_at', new Date(date_debut).toISOString());
+    if (date_fin) {
+      const fin = new Date(date_fin);
+      fin.setHours(23, 59, 59, 999);
+      requete = requete.lte('created_at', fin.toISOString());
+    }
 
-    const { data, error } = await requete;
+    const [colonne, croissant] =
+      tri === 'montant_desc' ? ['montant', false] :
+      tri === 'montant_asc' ? ['montant', true] :
+      tri === 'date_asc' ? ['created_at', true] :
+      ['created_at', false];
+
+    requete = requete.order(colonne, { ascending: croissant }).range(offset, offset + limit - 1);
+
+    const { data, error, count } = await requete;
     if (error) throw error;
 
-    res.status(200).json({ commandes: data, limit, offset });
+    res.status(200).json({ commandes: data, limit, offset, total: count });
   } catch (err) {
     console.error('Erreur historique dashboard:', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-
 //const CAPACITE_RESERVOIR_L = 25; // provisoire, voir la remarque plus bas
 
 app.get('/api/dashboard/reservoir', verifierToken, async (req, res) => {
