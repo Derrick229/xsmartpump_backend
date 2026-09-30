@@ -35,7 +35,7 @@ app.post('/api/commandes', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('Commande')
-      .insert([{ quantite, montant, numero_telephone statut: 'en_attente', device_id }])
+      .insert([{ quantite, montant, statut: 'en_attente', device_id, numero_telephone}])
       .select()
       .single();
 
