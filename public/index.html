@@ -416,6 +416,14 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="11" width="8" height="10" rx="1.5"/><rect x="3" y="14" width="8" height="7" rx="1.5"/></svg>
         Tableau de bord
       </button>
+      <button class="navitem" data-panel="history">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M3 12a9 9 0 1 0 3-6.7"/>
+        <polyline points="3 4 3 10 9 10"/>
+        <path d="M12 7v5l3 2"/>
+        </svg>
+      Historique
+      </button>
       <button class="navitem" data-panel="settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         Paramètres
@@ -495,7 +503,112 @@
           </div>
         </div>
       </div>
+     ```html
+<!-- Historique panel -->
+<div id="panel-history" style="display:none">
 
+  <div class="topbar">
+    <div>
+      <h1>Historique</h1>
+      <div class="muted">Consultez toutes les opérations de votre dispositif</div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="filters">
+
+    <div class="field">
+      <label for="history-statut">Statut</label>
+      <select id="history-statut">
+        <option value="">Tous les statuts</option>
+        <option value="en_attente">En attente</option>
+        <option value="paye">Payée</option>
+        <option value="demarrage">Démarrage</option>
+        <option value="distribution">Distribution</option>
+        <option value="distribue">Distribuée</option>
+        <option value="annule">Annulée</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="history-date-debut">Date de début</label>
+      <input id="history-date-debut" type="date">
+    </div>
+
+    <div class="field">
+      <label for="history-date-fin">Date de fin</label>
+      <input id="history-date-fin" type="date">
+    </div>
+
+    <div class="field grow">
+      <label for="history-tri">Trier par</label>
+      <select id="history-tri">
+        <option value="date_desc">Plus récentes</option>
+        <option value="date_asc">Plus anciennes</option>
+        <option value="montant_desc">Montant décroissant</option>
+        <option value="montant_asc">Montant croissant</option>
+      </select>
+    </div>
+
+    <button class="btn" type="button" id="history-filter-btn">
+      Filtrer
+    </button>
+
+     </div>
+
+     <!-- Message d'erreur -->
+     <div class="err-msg" id="history-err"></div>
+
+      <!-- Tableau -->
+      <div class="table-wrap">
+      <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Commande</th>
+          <th>Quantité</th>
+          <th>Montant</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+
+      <tbody id="history-body">
+        <tr class="empty-row">
+          <td colspan="5">Chargement…</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Pied du tableau -->
+    <div class="table-foot">
+
+      <div id="history-count">
+        —
+      </div>
+
+      <div class="pager">
+
+        <button
+          type="button"
+          id="history-prev"
+          disabled>
+          ← Précédent
+        </button>
+
+        <button
+          type="button"
+          id="history-next"
+          disabled>
+          Suivant →
+        </button>
+
+      </div>
+
+     </div>
+
+    </div>
+
+   </div>
       <!-- Settings panel -->
       <div id="panel-settings" style="display:none">
         <div class="topbar">
@@ -553,6 +666,14 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="11" width="8" height="10" rx="1.5"/><rect x="3" y="14" width="8" height="7" rx="1.5"/></svg>
       Tableau de bord
     </button>
+    <button data-panel="history">
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+     <path d="M3 12a9 9 0 1 0 3-6.7"/>
+      <polyline points="3 4 3 10 9 10"/>
+      <path d="M12 7v5l3 2"/>
+     </svg>
+     Historique
+    </button>
     <button data-panel="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Paramètres
@@ -594,19 +715,60 @@
     } catch (e) { return iso; }
   }
 
-  function statutInfo(s) {
-    switch (s) {
-      case "distribue": return { cls: "distribue", label: "Distribuée" };
-      case "paye":
-      case "demarrage":
-      case "distribution": return { cls: "encours", label: "En cours" };
-      case "en_attente": return { cls: "attente", label: "En attente" };
-      case "annule": return { cls: "annule", label: "Annulée" };
-      default: return { cls: "annule", label: s || "—" };
-    }
-  }
+function statutInfo(s) {
 
-  async function api(path, opts) {
+  switch (s) {
+
+    case "distribue":
+      return {
+        cls: "distribue",
+        label: "Distribuée"
+      };
+
+    case "paye":
+      return {
+        cls: "encours",
+        label: "Payée"
+      };
+
+    case "demarrage":
+      return {
+        cls: "encours",
+        label: "Démarrage"
+      };
+
+    case "distribution":
+      return {
+        cls: "encours",
+        label: "Distribution"
+      };
+
+    case "en_attente":
+      return {
+        cls: "attente",
+        label: "En attente"
+      };
+
+    case "annule":
+      return {
+        cls: "annule",
+        label: "Annulée"
+      };
+
+    case "echec":
+      return {
+        cls: "annule",
+        label: "Échec"
+      };
+
+    default:
+      return {
+        cls: "annule",
+        label: s || "—"
+      };
+  }
+}
+async function api(path, opts) {
     opts = opts || {};
     var headers = opts.headers || {};
     headers["Content-Type"] = "application/json";
@@ -728,18 +890,38 @@
   });
 
   /* ---------------- App shell: nav ---------------- */
-  function switchPanel(name) {
-    document.getElementById("panel-dashboard").style.display = name === "dashboard" ? "" : "none";
-    document.getElementById("panel-settings").style.display = name === "settings" ? "" : "none";
-    document.querySelectorAll(".navitem[data-panel], .mobile-nav button[data-panel]").forEach(function (b) {
-      b.classList.toggle("active", b.getAttribute("data-panel") === name);
-    });
-    if (name === "settings") loadSettingsForm();
-  }
-  document.querySelectorAll("[data-panel]").forEach(function (btn) {
-    btn.addEventListener("click", function () { switchPanel(btn.getAttribute("data-panel")); });
+function switchPanel(name) {
+
+  document.getElementById("panel-dashboard").style.display =
+    name === "dashboard" ? "" : "none";
+
+  document.getElementById("panel-history").style.display =
+    name === "history" ? "" : "none";
+
+  document.getElementById("panel-settings").style.display =
+    name === "settings" ? "" : "none";
+
+  document.querySelectorAll(
+    ".navitem[data-panel], .mobile-nav button[data-panel]"
+  ).forEach(function (b) {
+    b.classList.toggle(
+      "active",
+      b.getAttribute("data-panel") === name
+    );
   });
 
+  if (name === "dashboard") {
+    loadDashboard();
+  }
+
+  if (name === "history") {
+    loadHistory();
+  }
+
+  if (name === "settings") {
+    loadSettingsForm();
+  }
+}
   function logout() {
     state.token = null;
     try { localStorage.removeItem("xsp_token"); } catch (e) {}
@@ -898,13 +1080,208 @@
       setBtnLoading(btn, false, "Mettre à jour");
     }
   });
+/* ---------------- Historique ---------------- */
+var historyState = {
+  limit: 20,
+  offset: 0,
+  total: 0
+};
 
+async function loadHistory() {
+
+  var tbody = document.getElementById("history-body");
+  var countEl = document.getElementById("history-count");
+
+  setErr("history-err", "");
+
+  tbody.innerHTML =
+    '<tr class="empty-row"><td colspan="5">Chargement…</td></tr>';
+
+  var statut =
+    document.getElementById("history-statut").value;
+
+  var dateDebut =
+    document.getElementById("history-date-debut").value;
+
+  var dateFin =
+    document.getElementById("history-date-fin").value;
+
+  var tri =
+    document.getElementById("history-tri").value;
+
+  var params = new URLSearchParams();
+
+  params.set("limit", historyState.limit);
+  params.set("offset", historyState.offset);
+  params.set("tri", tri);
+
+  if (statut) {
+    params.set("statut", statut);
+  }
+
+  if (dateDebut) {
+    params.set("date_debut", dateDebut);
+  }
+
+  if (dateFin) {
+    params.set("date_fin", dateFin);
+  }
+
+  try {
+
+    var data = await api(
+      "/api/dashboard/commandes?" + params.toString()
+    );
+
+    historyState.total = Number(data.total) || 0;
+
+    if (!data.commandes || data.commandes.length === 0) {
+
+      tbody.innerHTML =
+        '<tr class="empty-row">' +
+        '<td colspan="5">Aucune commande trouvée.</td>' +
+        '</tr>';
+
+    } else {
+
+      tbody.innerHTML = data.commandes.map(function (c) {
+
+        var info = statutInfo(c.statut);
+
+        return "<tr>" +
+
+          "<td>" +
+          fmtDate(c.created_at) +
+          "</td>" +
+
+          "<td>" +
+          "#" + c.id +
+          "</td>" +
+
+          "<td>" +
+          Number(c.quantite).toFixed(2) +
+          " L</td>" +
+
+          "<td>" +
+          fmtFCFA(c.montant) +
+          "</td>" +
+
+          "<td>" +
+          '<span class="status">' +
+          '<span class="dot ' + info.cls + '"></span>' +
+          info.label +
+          "</span>" +
+          "</td>" +
+
+          "</tr>";
+
+      }).join("");
+    }
+
+    /* Compteur */
+
+    if (historyState.total === 0) {
+
+      countEl.textContent = "0 commande";
+
+    } else {
+
+      var debut =
+        historyState.offset + 1;
+
+      var fin =
+        Math.min(
+          historyState.offset +
+          historyState.limit,
+          historyState.total
+        );
+
+      countEl.textContent =
+        debut + "–" + fin +
+        " sur " +
+        historyState.total +
+        " commande" +
+        (historyState.total > 1 ? "s" : "");
+    }
+
+    /* Pagination */
+
+    document.getElementById("history-prev").disabled =
+      historyState.offset <= 0;
+
+    document.getElementById("history-next").disabled =
+      historyState.offset + historyState.limit >=
+      historyState.total;
+
+  } catch (err) {
+
+    tbody.innerHTML =
+      '<tr class="empty-row">' +
+      '<td colspan="5">Impossible de charger l’historique.</td>' +
+      '</tr>';
+
+    setErr("history-err", err.message);
+
+    countEl.textContent = "—";
+  }
+}
+
+
+/* Filtrer */
+
+document.getElementById("history-filter-btn")
+  .addEventListener("click", function () {
+
+    historyState.offset = 0;
+
+    loadHistory();
+
+  });
+
+
+/* Page précédente */
+
+document.getElementById("history-prev")
+  .addEventListener("click", function () {
+
+    if (historyState.offset <= 0) {
+      return;
+    }
+
+    historyState.offset =
+      Math.max(
+        0,
+        historyState.offset -
+        historyState.limit
+      );
+
+    loadHistory();
+
+  });
+
+
+/* Page suivante */
+
+document.getElementById("history-next")
+  .addEventListener("click", function () {
+
+    if (
+      historyState.offset +
+      historyState.limit >=
+      historyState.total
+    ) {
+      return;
+    }
+
+    historyState.offset +=
+      historyState.limit;
+
+    loadHistory();
+  });
   function enterApp() {
     show("view-app");
     switchPanel("dashboard");
-    loadDashboard();
-    loadSettingsForm();
-  }
+    }
 
   /* ---------------- Boot ---------------- */
   if (state.token) {
