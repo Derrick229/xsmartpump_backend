@@ -22,203 +22,33 @@ app.get('/', (req, res) => {
   res.send('XSMARTPUMP backend en ligne !');
 });
 
-//app.post('/api/commandes', async (req, res) => {
-//  const { quantite, montant, device_id, numero_telephone } = req.body;
-
-//  if (quantite === undefined || montant === undefined || quantite <= 0 || montant <= 0) {
-//    return res.status(400).json({ error: 'Quantité et montant requis et doivent être positifs' });
-//  }
-//  if (!device_id) {
-//    return res.status(400).json({ error: 'device_id requis' });
-//  }
-
-//  try {
-//    const { data, error } = await supabase
-//      .from('Commande')
-//      .insert([{ quantite, montant, statut: 'en_attente', device_id }])
-//      .select()
-//      .single();
-
-//    if (error) throw error;
-
-//    console.log('Commande créée:', data);
-//    res.status(201).json(data);
-//  } catch (err) {
-//    console.error('Erreur création commande:', err);
-//    res.status(500).json({ error: 'Erreur serveur' });
-//  }
-//});
-
 app.post('/api/commandes', async (req, res) => {
-  const {
-    quantite,
-    montant,
-    device_id,
-    numero_telephone
-  } = req.body;
+  const { quantite, montant, device_id, numero_telephone } = req.body;
 
-  // ============================================================
-  // 1. VALIDATION
-  // ============================================================
-
-  if (
-    quantite === undefined ||
-    montant === undefined ||
-    quantite <= 0 ||
-    montant <= 0
-  ) {
-    return res.status(400).json({
-      error: 'Quantité et montant requis et doivent être positifs'
-    });
+  if (quantite === undefined || montant === undefined || quantite <= 0 || montant <= 0) {
+    return res.status(400).json({ error: 'Quantité et montant requis et doivent être positifs' });
   }
-
   if (!device_id) {
-    return res.status(400).json({
-      error: 'device_id requis'
-    });
+    return res.status(400).json({ error: 'device_id requis' });
   }
 
   try {
-
-    // ============================================================
-    // 2. CRÉER LA COMMANDE
-    // ============================================================
-
     const { data, error } = await supabase
       .from('Commande')
-      .insert([{
-        quantite,
-        montant,
-        statut: 'en_attente',
-        device_id
-      }])
+      .insert([{ quantite, montant, statut: 'en_attente', device_id }])
       .select()
       .single();
 
     if (error) throw error;
 
     console.log('Commande créée:', data);
-
-    // ============================================================
-    // 3. PAS DE NUMÉRO
-    //    => ON GARDE LE SYSTÈME QR ACTUEL
-    // ============================================================
-
-    if (!numero_telephone || String(numero_telephone).trim() === '') {
-
-      console.log(
-        'Aucun numéro fourni → mode QR disponible pour la commande',
-        data.id
-      );
-
-      return res.status(201).json(data);
-    }
-
-    // ============================================================
-    // 4. NETTOYER LE NUMÉRO DE TÉLÉPHONE
-    // ============================================================
-
-    let telephone = String(numero_telephone)
-      .replace(/\s+/g, '')
-      .replace(/-/g, '');
-
-    console.log(
-      'Paiement Mobile Money demandé pour:',
-      data.id
-    );
-
-    // ============================================================
-    // 5. LANCER LE DÉBIT KKIAPAY
-    // ============================================================
-
-    const paiement = await k.debit(
-      telephone,
-      Number(montant),
-      {
-        reason: `XSMARTPUMP - Commande ${data.id}`
-      }
-    );
-
-    console.log(
-      'Réponse Kkiapay debit():',
-      paiement
-    );
-
-    // ============================================================
-    // 6. VÉRIFIER QU'UNE TRANSACTION A BIEN ÉTÉ CRÉÉE
-    // ============================================================
-
-    if (!paiement || !paiement.transactionId) {
-
-      console.error(
-        'Kkiapay n’a pas retourné de transactionId'
-      );
-
-      // La commande existe mais aucun paiement n'a été lancé.
-      await supabase
-        .from('Commande')
-        .update({
-          statut: 'echec'
-        })
-        .eq('id', data.id);
-
-      return res.status(502).json({
-        error: 'Impossible de lancer le paiement Mobile Money',
-        commande_id: data.id
-      });
-    }
-
-    // ============================================================
-    // 7. ENREGISTRER LE NUMÉRO + TRANSACTION KKIAPAY
-    // ============================================================
-
-    const { error: updateError } = await supabase
-      .from('Commande')
-      .update({
-        numero_telephone: telephone,
-        transaction_id: paiement.transactionId
-      })
-      .eq('id', data.id);
-
-    if (updateError) {
-
-      console.error(
-        'Erreur enregistrement transaction:',
-        updateError
-      );
-
-      throw updateError;
-    }
-
-    console.log(
-      'Transaction Kkiapay enregistrée:',
-      paiement.transactionId
-    );
-
-    // ============================================================
-    // 8. RÉPONSE À L'ESP32
-    // ============================================================
-
-    return res.status(201).json({
-      ...data,
-      numero_telephone: telephone,
-      transaction_id: paiement.transactionId,
-      paiement_direct: true,
-      message: 'Demande de paiement envoyée sur le téléphone'
-    });
-
+    res.status(201).json(data);
   } catch (err) {
-
-    console.error(
-      'Erreur création/paiement commande:',
-      err
-    );
-
-    return res.status(500).json({
-      error: 'Erreur serveur'
-    });
+    console.error('Erreur création commande:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
+
 app.get('/api/reservoir/:deviceId', async (req, res) => {
   const { deviceId } = req.params;
   try {
@@ -290,6 +120,7 @@ const html = `
 
       <kkiapay-widget
         amount="${commande.montant}"
+        phone="${commande.numero_telephone}"
         key="${process.env.KKIAPAY_PUBLIC_KEY}"
         position="center"
         sandbox="${process.env.KKIAPAY_SANDBOX}"
@@ -304,301 +135,41 @@ const html = `
 
   res.send(html);
 });
-//app.post('/api/kkiapay/webhook', async (req, res) => {
-//  const signature = req.headers['x-kkiapay-secret'];
-//  if (signature !== process.env.KKIAPAY_WEBHOOK_SECRET) {
-//    console.log('Webhook refusé: signature invalide');
-//    return res.status(401).send('Non autorisé');
-//  }
-
-//  console.log('Corps complet du webhook:', JSON.stringify(req.body, null, 2));
-
-//  const { transactionId, isPaymentSucces, event } = req.body;
-//  console.log('Webhook reçu:', event, 'succès:', isPaymentSucces);
-
-//  if (!isPaymentSucces) {
-//    return res.status(200).send('OK');
-//  }
-
-//  try {
-//    const commandeId = req.body.data;
-
-//    const { error } = await supabase
-//      .from('Commande')
-//      .update({ statut: 'paye' })
-//      .eq('id', commandeId);
-
-//    if (error) throw error;
-
-//    console.log('Commande', commandeId, 'marquée comme payée');
-//    res.status(200).send('OK');
-//  } catch (err) {
-//    console.error('Erreur traitement webhook:', err);
-//    res.status(500).send('Erreur');
-//  }
-//});
-
-
 app.post('/api/kkiapay/webhook', async (req, res) => {
-
-  // ============================================================
-  // 1. VÉRIFICATION DU SECRET KKIAPAY
-  // ============================================================
-
   const signature = req.headers['x-kkiapay-secret'];
-
-  if (signature !== process.env.KKIAPAY_WEBHOOK_SECRET) {
-
-    console.log(
-      '❌ Webhook Kkiapay refusé : signature invalide'
-    );
-
+ if (signature !== process.env.KKIAPAY_WEBHOOK_SECRET) {
+    console.log('Webhook refusé: signature invalide');
     return res.status(401).send('Non autorisé');
   }
 
-  // ============================================================
-  // 2. RÉCUPÉRATION DES INFORMATIONS
-  // ============================================================
+  console.log('Corps complet du webhook:', JSON.stringify(req.body, null, 2));
 
-  const {
-    transactionId,
-    isPaymentSucces,
-    event,
-    amount,
-    account,
-    failureCode,
-    failureMessage
-  } = req.body;
+  const { transactionId, isPaymentSucces, event } = req.body;
+  console.log('Webhook reçu:', event, 'succès:', isPaymentSucces);
 
-  console.log('====================================');
-  console.log('WEBHOOK KKIAPAY REÇU');
-  console.log('Événement       :', event);
-  console.log('Transaction ID  :', transactionId);
-  console.log('Paiement réussi :', isPaymentSucces);
-  console.log('Montant         :', amount);
-  console.log('Compte          :', account);
-  console.log('Erreur          :', failureCode);
-  console.log('====================================');
-
-  // ============================================================
-  // 3. TRANSACTION ID OBLIGATOIRE
-  // ============================================================
-
-  if (!transactionId) {
-
-    console.error(
-      'Webhook sans transactionId'
-    );
-
-    return res.status(400).send('transactionId manquant');
+  if (!isPaymentSucces) {
+    return res.status(200).send('OK');
   }
 
   try {
+    const commandeId = req.body.data;
 
-    // ==========================================================
-    // 4. RETROUVER LA COMMANDE
-    // ==========================================================
-
-    const { data: commande, error: rechercheError } = await supabase
+    const { error } = await supabase
       .from('Commande')
-      .select('*')
-      .eq('transaction_id', transactionId)
-      .single();
+      .update({ statut: 'paye' })
+      .eq('id', commandeId);
 
-    // ----------------------------------------------------------
-    // Si Kkiapay envoie le webhook avant que Render ait terminé
-    // l'enregistrement de transaction_id, on renvoie 500.
-    //
-    // Cela permet à Kkiapay de réessayer plutôt que de perdre
-    // définitivement la confirmation.
-    // ----------------------------------------------------------
+    if (error) throw error;
 
-    if (rechercheError || !commande) {
-
-      console.error(
-        'Commande introuvable pour transaction:',
-        transactionId
-      );
-
-      return res.status(500).send(
-        'Commande non trouvée, nouvelle tentative nécessaire'
-      );
-    }
-
-    console.log(
-      'Commande trouvée:',
-      commande.id
-    );
-
-    // ==========================================================
-    // 5. PROTECTION CONTRE LES DOUBLONS
-    // ==========================================================
-
-    if (
-      commande.statut === 'paye' ||
-      commande.statut === 'distribue'
-    ) {
-
-      console.log(
-        'Commande déjà traitée:',
-        commande.id
-      );
-
-      return res.status(200).send('OK');
-    }
-
-    // ==========================================================
-    // 6. SI LE PAIEMENT A ÉCHOUÉ
-    // ==========================================================
-
-    if (!isPaymentSucces) {
-
-      console.log(
-        '❌ Paiement échoué:',
-        failureCode,
-        failureMessage
-      );
-
-      const { error: erreurEchec } = await supabase
-        .from('Commande')
-        .update({
-          statut: 'echec'
-        })
-        .eq('id', commande.id);
-
-      if (erreurEchec) {
-        throw erreurEchec;
-      }
-
-      console.log(
-        'Commande',
-        commande.id,
-        'marquée comme echec'
-      );
-
-      return res.status(200).send('OK');
-    }
-
-    // ==========================================================
-    // 7. VÉRIFICATION SERVEUR DE LA TRANSACTION
-    // ==========================================================
-
-    console.log(
-      'Vérification Kkiapay de:',
-      transactionId
-    );
-
-    const verification = await k.verify(transactionId);
-
-    console.log(
-      'Résultat vérification:',
-      verification
-    );
-
-    // ==========================================================
-    // 8. VÉRIFIER QUE KKIAPAY CONFIRME BIEN LE PAIEMENT
-    // ==========================================================
-
-    if (
-      !verification ||
-      verification.isPaymentSucces !== true
-    ) {
-
-      console.error(
-        'Transaction non confirmée par Kkiapay'
-      );
-
-      return res.status(400).send(
-        'Paiement non confirmé'
-      );
-    }
-
-    // ==========================================================
-    // 9. VÉRIFIER LE MONTANT
-    // ==========================================================
-
-    if (
-      verification.amount !== undefined &&
-      Number(verification.amount) !== Number(commande.montant)
-    ) {
-
-      console.error(
-        '❌ MONTANT INCORRECT'
-      );
-
-      console.error(
-        'Montant commande:',
-        commande.montant
-      );
-
-      console.error(
-        'Montant Kkiapay:',
-        verification.amount
-      );
-
-      return res.status(400).send(
-        'Montant incorrect'
-      );
-    }
-
-    // ==========================================================
-    // 10. MARQUER LA COMMANDE COMME PAYÉE
-    // ==========================================================
-
-    const { error: updateError } = await supabase
-      .from('Commande')
-      .update({
-        statut: 'paye'
-      })
-      .eq('id', commande.id)
-      .eq('statut', 'en_attente');
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    console.log(
-      '===================================='
-    );
-
-    console.log(
-      '✅ PAIEMENT CONFIRMÉ'
-    );
-
-    console.log(
-      'Commande:',
-      commande.id
-    );
-
-    console.log(
-      'Montant:',
-      commande.montant,
-      'FCFA'
-    );
-
-    console.log(
-      'Transaction:',
-      transactionId
-    );
-
-    console.log(
-      '===================================='
-    );
-
-    return res.status(200).send('OK');
-
+    console.log('Commande', commandeId, 'marquée comme payée');
+    res.status(200).send('OK');
   } catch (err) {
-
-    console.error(
-      'Erreur traitement webhook Kkiapay:',
-      err
-    );
-
-    return res.status(500).send(
-      'Erreur serveur'
-    );
+    console.error('Erreur traitement webhook:', err);
+    res.status(500).send('Erreur');
   }
 });
+
+
 
 // La pompe interroge cette route pour savoir s'il y a une commande à distribuer
 app.get('/api/commandes/a-distribuer/:deviceId', async (req, res) => {
