@@ -247,6 +247,40 @@
   }
   .ok-msg.show { display: block; }
 
+  /* ---------- Historique ---------- */
+  .filters {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 20px;
+    padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m);
+  }
+  .filters .field { margin-bottom: 0; min-width: 140px; flex: 1 1 140px; }
+  .filters .field.grow { flex: 1 1 200px; }
+  .filters select {
+    width: 100%; padding: 11px 13px; border-radius: var(--radius-s); border: 1px solid var(--line);
+    background: var(--surface); color: var(--ink); font-size: 14px; font-family: inherit;
+  }
+  .filters .btn { width: auto; padding: 11px 20px; flex: 0 0 auto; }
+  .search-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .search-row input { flex: 1; }
+  .search-row .btn { width: auto; padding: 11px 22px; }
+  .table-foot {
+    display: flex; align-items: center; justify-content: space-between; padding: 14px 16px;
+    border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-soft); flex-wrap: wrap; gap: 10px;
+  }
+  .pager { display: flex; gap: 8px; }
+  .pager button {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s);
+    padding: 6px 14px; font-size: 13px; color: var(--ink); cursor: pointer; font-family: inherit;
+    transition: background .12s ease, opacity .12s ease;
+  }
+  .pager button:hover:not(:disabled) { background: var(--paper); }
+  .pager button:disabled { opacity: .4; cursor: not-allowed; }
+  .link-more {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 13.5px; color: var(--blue);
+    background: none; border: none; cursor: pointer; font-family: inherit; padding: 0; margin-top: 14px;
+  }
+  .link-more svg { width: 14px; height: 14px; }
+  .link-more:hover { text-decoration: underline; }
+
   .loading-line { color: var(--ink-soft); font-size: 14px; padding: 20px 0; }
   .spinner {
     width: 15px; height: 15px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4);
@@ -484,7 +518,7 @@
               </div>
               <div class="field">
                 <label for="set-tel">Numéro à alerter par SMS</label>
-                <input id="set-tel" type="text" placeholder="+22901XXXXXXXX" required>
+                <input id="set-tel" type="tel" placeholder="+229XXXXXXXX">
                 <div class="hint">Reçoit un SMS dès que le niveau passe sous le seuil ci-dessus.</div>
               </div>
               <button class="btn" type="submit" id="settings-res-btn">Enregistrer</button>
@@ -534,7 +568,7 @@
 (function () {
   "use strict";
 
-  var API_BASE = "";
+  var API_BASE = "https://xsmartpump-backend.onrender.com";
 
   var state = { token: null, deviceId: null, role: null };
   try {
@@ -814,7 +848,6 @@
       var params = await api("/api/dashboard/parametres");
       document.getElementById("set-cap").value = params.capacite_litres || "";
       document.getElementById("set-seuil").value = params.seuil_alerte_litres || "";
-      document.getElementById("set-tel").value = params.telephone_proprietaire || "";
       state.deviceLabel = params.nom || params.numero_dispositif;
       document.getElementById("device-tag").innerHTML = "Dispositif : <b>" + (state.deviceLabel || "—") + "</b>";
     } catch (err) {
@@ -831,10 +864,6 @@
 
     try {
       var body = { capacite_litres: Number(document.getElementById("set-cap").value) };
-      var numero = document.getElementById("set-tel").value;
-      if (numero !== "") {
-       body.telephone_proprietaire = numero;
-       }
       var seuil = document.getElementById("set-seuil").value;
       if (seuil !== "") body.seuil_alerte_litres = Number(seuil);
       await api("/api/dashboard/parametres", { method: "PATCH", body: body });
